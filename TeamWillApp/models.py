@@ -1,4 +1,7 @@
 from django.db import models
+from django.contrib.auth.models import User
+from django.dispatch import receiver
+from django.db.models.signals import post_save
 
 # Create your models here.
 
@@ -9,6 +12,7 @@ class TypeCredit(models.Model):
     TCRTAUXINTERT = models.FloatField()
     TCRDUREEMAX = models.IntegerField()
     TCRMAXCAPITAL = models.FloatField(default=0)
+    TCRIMAGE = models.CharField(max_length=40, default="")
 
 
 class DocCredit(models.Model):
@@ -59,12 +63,13 @@ class LKTCRCHAMP(models.Model):
 
 
 class PROSPECT(models.Model):
+    user = models.OneToOneField(User, on_delete=models.CASCADE, null=True)
     PRONOM = models.CharField(max_length=100)
     PROPRENOM = models.CharField(max_length=100)
     PRODEPRENOM = models.CharField(max_length=100)
-    PROMAIL = models.CharField(max_length=100, unique=True)
+    PROMAIL = models.CharField(max_length=100)
     PROTEL = models.CharField(max_length=20)
-    PRODATENAISS = models.DateField()
+    PRODATENAISS = models.DateField(null=True)
     PROAGE = models.IntegerField(default=0)
     PROSITUATIONFAMILLE = models.CharField(max_length=50, default="Marie")
     PROSALAIRE = models.FloatField(default=0)
@@ -78,6 +83,14 @@ class PROSPECT(models.Model):
     # USERNAME_FIELD = 'PROMAIL'
     # objects = CustomUserManager()
 
+@receiver(post_save, sender=User)
+def create_user_profile(sender, instance, created, **kwargs):
+    if created:
+        PROSPECT.objects.create(user=instance)
+
+@receiver(post_save, sender=User)
+def save_user_profile(sender, instance, **kwargs):
+    instance.prospect.save()
 
 class DOSSIERPROSPECT(models.Model):
     DPRCODE = models.CharField(max_length=100)
@@ -89,6 +102,7 @@ class DOSSIERPROSPECT(models.Model):
     DPRNBRECHEANCE = models.FloatField()
     DPRECHEANCE = models.FloatField()
     TCID = models.ForeignKey(TypeCredit, on_delete=models.CASCADE, null=True)
+    DPRDATEPROCPECT = models.DateField(null=True)
 
 
 class DPRCCRVALEUR(models.Model):
@@ -113,6 +127,7 @@ class DEMANDECREDIT(models.Model):
     ETATDOCUMENT = models.CharField(max_length=50, default="En Attente")
     COMMENTAIREAGENT = models.CharField(max_length=255, default="En Attente")
     TCID = models.ForeignKey(TypeCredit, on_delete=models.CASCADE, null=True)
+    DATE = models.DateField(null=True)
 
 
 class DOCUMENTDEMANDE(models.Model):

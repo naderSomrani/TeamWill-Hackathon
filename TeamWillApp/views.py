@@ -6,6 +6,10 @@ from .serializers import *
 from rest_framework.parsers import FileUploadParser, MultiPartParser
 import json
 import datetime
+from django.core.mail import send_mail
+from django.conf import settings
+from datetime import datetime, timedelta
+
 
 # Create your views here.
 
@@ -81,22 +85,31 @@ class DossierProspectAPI(APIView):
         else:
             todayDate = datetime.date(todayDate.year, todayDate.month, 25)
         print(todayDate)
-        for i in range(1, nbr_echance+1):
+        k = 1
+        if dossier_prospect.DPRMENSUALITE == 'Mensuelle':
+            k = 1
+        elif dossier_prospect.DPRMENSUALITE == 'Trimestrielle':
+            k = 3
+        elif dossier_prospect.DPRMENSUALITE == 'Semestrielle':
+            k = 6
+        elif dossier_prospect.DPRMENSUALITE == 'Anuelle':
+            k = 12
+        for i in range(1, nbr_echance+1, k):
             In = CR * interet / 12
             Cn = echeance - In
             CR = CR - Cn
             dpr_echance = DPRECHEANCE(DPRORDER=i, DPRID=dossier_prospect, DPRINTERETN=In, DPRCAPITALN=Cn, DPRECHEANCEN=echeance, DPRDATE=todayDate)
             dpr_echance.save()
-            if todayDate.month == 12:
-                todayDate = datetime.date(todayDate.year+1, 1, todayDate.day)
+            if todayDate.month + k > 12:
+                todayDate = datetime.date(todayDate.year+1, todayDate.month + k - 12, todayDate.day)
             else:
-                todayDate = datetime.date(todayDate.year, todayDate.month+1, todayDate.day)
+                todayDate = datetime.date(todayDate.year, todayDate.month+k, todayDate.day)
         print(dossier_prospect)
         serializer = DossierProspectSerializer(dossier_prospect, many=False)
         return Response(serializer.data, status=status.HTTP_201_CREATED)
 
 
-class SimulationHistoriqueAPI(APIView):
+class SimulationEcheanceAPI(APIView):
     def get(self, request):
         serializer = DPRECHEANCESerializer(DPRECHEANCE.objects.filter(DPRID=request.query_params['ID']), many=True)
         return Response(serializer.data, status=status.HTTP_200_OK)
@@ -158,6 +171,17 @@ class UpdateETAT(APIView):
         serializer = DEMANDECREDITSerializer(demande, data=request.data)
         if serializer.is_valid():
             serializer.save()
+
+            email_from = settings.EMAIL_HOST_USER
+            recipient_list = ['cabannitaha@gmail.com', ]
+            if demande.ETATDOCUMENT == 'Incomplet':
+                subject = 'Refus de demande de crédit'
+                message = 'Votre demande de crédit est refusé'
+                send_mail(subject, message, email_from, recipient_list)
+            if demande.ETATACCEPTATION == 'Accepté':
+                subject = 'Acceptation de demande de crédit'
+                message = 'Votre demande de crédit est accepté'
+                send_mail(subject, message, email_from, recipient_list)
             return Response(serializer.data)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
@@ -201,3 +225,81 @@ class CalculateScoreAPI(APIView):
             "score": score
         }
         return Response(result, status=status.HTTP_200_OK)
+
+
+class DemandeCompletAPI(APIView):
+    def get(self, request):
+        serializer = DEMANDECREDITSerializer(DEMANDECREDIT.objects.filter(ETATACCEPTATION="Complet"), many=True)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
+
+class Registration(APIView):
+    def post(self, request):
+        username = request.data['username']
+        password1 = request.data['password1']
+        password2 = request.data['password2']
+        if password1 != password2:
+            return Response(status=status.HTTP_400_BAD_REQUEST)
+        email = request.data['PROMAIL']
+        PROSPECT.objects.create(PRONOM=request.data['PRONOM'],
+                            PROPRENOM=request.data['PROPRENOM'],
+                            PRODEPRENOM=request.data['PRODEPRENOM'],
+                            PROMAIL=email,
+                            PROTEL=request.data['PROTEL'],
+                            PRODATENAISS=datetime.datetime.strptime(request.data['PRODATENAISS'], "%Y-%m-%d").date(),
+                            PROAGE=int(request.data['PROAGE']),
+                            PROSITUATIONFAMILLE=request.data['PROSITUATIONFAMILLE'],
+                            PROSALAIRE=float(request.data['PROSALAIRE']),
+                            PROFONCTION=request.data['PROFONCTION'],
+                            PROSECTEURFONCTION=request.data['PROSECTEURFONCTION'],
+                            PRODIRIGENT=request.data['PRODIRIGENT'],
+                            PRONBRENFANT=int(request.data['PRONBRENFANT']))
+        user = User(username=username, email=email)
+        user.set_password(password1)
+        user.save()
+        return Response(user.id, status= status.HTTP_200_OK)
+
+
+class StatistiqueSimulation(APIView):
+    def get(self, request):
+        result = []
+        last_month = datetime.today() - timedelta(days=30)
+        for i in range(6):
+            simulation = DOSSIERPROSPECT.objects.filter(DPRDATEPROCPECT__month=last_month.month)
+            obj = {
+                "month": last_month,
+                "nbr_simulation": simulation.count()
+            }
+            result.append(obj)
+            last_month = last_month - timedelta(days=30)
+        return Response(result, status= status.HTTP_200_OK)
+
+
+class StatistiqueDemandeCredit(APIView):
+    def get(self, request):
+        result = []
+        last_month = datetime.today() - timedelta(days=30)
+        for i in range(6):
+            demandes = DEMANDECREDIT.objects.filter(DATE__month=last_month.month)
+            obj = {
+                "month": last_month,
+                "nbr_demande": demandes.count()
+            }
+            result.append(obj)
+            last_month = last_month - timedelta(days=30)
+        return Response(result, status= status.HTTP_200_OK)
+
+
+class StatistiqueDemandeCreditAccepte(APIView):
+    def get(self, request):
+        result = []
+        last_month = datetime.today() - timedelta(days=30)
+        for i in range(6):
+            demandes = DEMANDECREDIT.objects.filter(DATE__month=last_month.month, ETATACCEPTATION='Accepté')
+            obj = {
+                "month": last_month,
+                "nbr_demande": demandes.count()
+            }
+            result.append(obj)
+            last_month = last_month - timedelta(days=30)
+        return Response(result, status= status.HTTP_200_OK)

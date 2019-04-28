@@ -24,12 +24,16 @@ urlpatterns = [
     path('type-credit/<int:id>', TypeCreditByIDAPI.as_view()),
     path('champ-credit', ChampCreditAPI.as_view()),
     path('dossier-prospect', DossierProspectAPI.as_view()),
-    path('simulation-historique', SimulationHistoriqueAPI.as_view()),
+    path('simulation-echeance', SimulationEcheanceAPI.as_view()),
     path('historique-prospect', HistoriqueProspectAPI.as_view()),
     path('demande-credit/<int:DCRID>/<int:DPRID>/<int:TCID>', DemandeCreditAPI.as_view()),
     path('doc-credit/<int:id>', DocumentByIDCredit.as_view()),
     path('list-demande', ListDemande.as_view()),
     path('list-document', ListDocumentDemande.as_view()),
     path('update-etat/<int:id>', UpdateETAT.as_view()),
-    path('calcul-score/<int:id>/<int:DMID>', CalculateScoreAPI.as_view())
+    path('calcul-score/<int:id>/<int:DMID>', CalculateScoreAPI.as_view()),
+    path('registration', Registration.as_view()),
+    path('statistique', StatistiqueSimulation.as_view()),
+    path('statistique-demande', StatistiqueDemandeCredit.as_view()),
+    path('statistique-accepte', StatistiqueDemandeCreditAccepte.as_view())
 ]
