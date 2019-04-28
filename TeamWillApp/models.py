@@ -65,6 +65,13 @@ class PROSPECT(models.Model):
     PROMAIL = models.CharField(max_length=100, unique=True)
     PROTEL = models.CharField(max_length=20)
     PRODATENAISS = models.DateField()
+    PROAGE = models.IntegerField(default=0)
+    PROSITUATIONFAMILLE = models.CharField(max_length=50, default="Marie")
+    PROSALAIRE = models.FloatField(default=0)
+    PROFONCTION = models.CharField(max_length=100,default="Salarie")
+    PROSECTEURFONCTION = models.CharField(max_length=100, default="Public")
+    PRODIRIGENT  = models.CharField(max_length=100,default="Dirigent")
+    PRONBRENFANT = models.IntegerField(default=0)
     # password = models.CharField(max_length=255, default="")
     # username = models.CharField(max_length=255, default="")
 
@@ -81,6 +88,7 @@ class DOSSIERPROSPECT(models.Model):
     DPRMENSUALITE = models.CharField(max_length=100)
     DPRNBRECHEANCE = models.FloatField()
     DPRECHEANCE = models.FloatField()
+    TCID = models.ForeignKey(TypeCredit, on_delete=models.CASCADE, null=True)
 
 
 class DPRCCRVALEUR(models.Model):
@@ -104,9 +112,26 @@ class DEMANDECREDIT(models.Model):
     ETATACCEPTATION = models.CharField(max_length=50, default="En Attente")
     ETATDOCUMENT = models.CharField(max_length=50, default="En Attente")
     COMMENTAIREAGENT = models.CharField(max_length=255, default="En Attente")
+    TCID = models.ForeignKey(TypeCredit, on_delete=models.CASCADE, null=True)
 
 
 class DOCUMENTDEMANDE(models.Model):
     DCRID = models.ForeignKey(DocCredit, on_delete=models.CASCADE)
     DocumentFile = models.FileField(upload_to='./demande', null=True)
     DEMID = models.ForeignKey(DEMANDECREDIT, on_delete=models.CASCADE, null=True)
+
+
+class DOSSIER(models.Model):
+    DOSID = models.IntegerField()
+    DOSCAPITAL = models.FloatField()
+    DOSNBRECHEANCE = models.IntegerField()
+    DOSCAPITALRESTANT = models.FloatField()
+    PROID = models.ForeignKey(PROSPECT, on_delete=models.CASCADE, null=True)
+
+
+class DOSECHEANCE(models.Model):
+    DOSID = models.ForeignKey(DOSSIER, on_delete=models.CASCADE, null=True)
+    ORDRE = models.IntegerField()
+    DATEECHEANCE = models.DateField()
+    MONTANTECHEANCE = models.IntegerField()
+    DATEPAIEMENT = models.DateField(null=True, blank=True)

@@ -67,9 +67,11 @@ class DossierProspectAPI(APIView):
         prospect = PROSPECT.objects.get(pk=body['PROCODE'])
         dpr_code = DOSSIERPROSPECT.objects.all().count()
         capital = capital + total_interet
+        TCID = body['TCID']
+        type_credit = TypeCredit.objects.get(pk=TCID)
         dossier_prospect = DOSSIERPROSPECT(DPRCODE=dpr_code+1, PROCODE=prospect, DPRCAPITAL=capital,
                                            DPRTAUXINTERET=interet, DPRTOTALINTERET=total_interet, DPRMENSUALITE=body['DPRMENSUALITE'],
-                                           DPRNBRECHEANCE=nbr_echance, DPRECHEANCE=echeance)
+                                           DPRNBRECHEANCE=nbr_echance, DPRECHEANCE=echeance, TCID=type_credit)
         dossier_prospect.save()
         CR = capital
         todayDate = datetime.date.today()
@@ -120,8 +122,8 @@ class HistoriqueProspectAPI(APIView):
 class DemandeCreditAPI(APIView):
     parser_classes = (MultiPartParser,)
 
-    def post(self, request, DCRID, DPRID, **kwargs):
-        demande = DEMANDECREDIT(DPRID=DOSSIERPROSPECT.objects.get(pk=DPRID), DemCode="0001")
+    def post(self, request, DCRID, DPRID, TCID, **kwargs):
+        demande = DEMANDECREDIT(DPRID=DOSSIERPROSPECT.objects.get(pk=DPRID), DemCode="0001", TCID=TypeCredit.objects.get(pk=TCID))
         demande.save()
         data_demande = {
             "DCRID": DCRID,
@@ -158,3 +160,44 @@ class UpdateETAT(APIView):
             serializer.save()
             return Response(serializer.data)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+class CalculateScoreAPI(APIView):
+    def get(self, request, id, DMID):
+        prospect = PROSPECT.objects.get(pk=id)
+        score = 0
+        if prospect.PROAGE < 30 or prospect.PROAGE > 65:
+            score = score + 0.1
+        if prospect.PROSITUATIONFAMILLE != "Marie":
+            score = score + 0.2
+        if prospect.PROSALAIRE < 800:
+            score = score + 0.2
+        if prospect.PROFONCTION in ["Fonctionnaire", "Pas de fonction"]:
+            score = score + 0.4
+        if prospect.PRODIRIGENT == "Dirigent":
+            score = score - 0.3
+        if prospect.PRONBRENFANT > 2:
+            score = score + 0.3
+        if prospect.PROSECTEURFONCTION == "Privé":
+            score = score + 0.2
+        demande = DEMANDECREDIT.objects.get(pk=DMID)
+        dossiers = DOSSIER.objects.filter(PROID=prospect)
+        for item in dossiers:
+            print("test1")
+            if (item.DOSCAPITALRESTANT/demande.DPRID.DPRNBRECHEANCE) > (prospect.PROSALAIRE * 0.3):
+                print("test2")
+                score = score + 1
+            dos_echeance = DOSECHEANCE.objects.filter(DOSID=item)
+            for dos in dos_echeance:
+                if dos.DATEECHEANCE < datetime.datetime.today():
+                    if dos.DATEPAIEMENT is None:
+                        score = score + 0.2
+                    elif dos.DATEPAIEMENT > dos.DATEECHEANCE:
+                        score = score + 0.1
+
+        if score > 5:
+            score = 5
+        result = {
+            "score": score
+        }
+        return Response(result, status=status.HTTP_200_OK)

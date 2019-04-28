@@ -26,9 +26,10 @@ urlpatterns = [
     path('dossier-prospect', DossierProspectAPI.as_view()),
     path('simulation-historique', SimulationHistoriqueAPI.as_view()),
     path('historique-prospect', HistoriqueProspectAPI.as_view()),
-    path('demande-credit/<int:DCRID>/<int:DPRID>', DemandeCreditAPI.as_view()),
+    path('demande-credit/<int:DCRID>/<int:DPRID>/<int:TCID>', DemandeCreditAPI.as_view()),
     path('doc-credit/<int:id>', DocumentByIDCredit.as_view()),
     path('list-demande', ListDemande.as_view()),
     path('list-document', ListDocumentDemande.as_view()),
-    path('update-etat/<int:id>', UpdateETAT.as_view())
+    path('update-etat/<int:id>', UpdateETAT.as_view()),
+    path('calcul-score/<int:id>/<int:DMID>', CalculateScoreAPI.as_view())
 ]
