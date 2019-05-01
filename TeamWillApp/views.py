@@ -8,7 +8,8 @@ import json
 import datetime
 from django.core.mail import send_mail
 from django.conf import settings
-from datetime import datetime, timedelta
+from datetime import timedelta
+from rest_framework.authtoken.models import Token
 
 
 # Create your views here.
@@ -206,6 +207,9 @@ class CalculateScoreAPI(APIView):
             score = score + 0.2
         demande = DEMANDECREDIT.objects.get(pk=DMID)
         dossiers = DOSSIER.objects.filter(PROID=prospect)
+        tout_dossiers = DOSSIER.objects.all()
+        nb_unpayed = 0
+        nb_late = 0
         for item in dossiers:
             print("test1")
             if (item.DOSCAPITALRESTANT/demande.DPRID.DPRNBRECHEANCE) > (prospect.PROSALAIRE * 0.3):
@@ -215,10 +219,16 @@ class CalculateScoreAPI(APIView):
             for dos in dos_echeance:
                 if dos.DATEECHEANCE < datetime.datetime.today():
                     if dos.DATEPAIEMENT is None:
+                        nb_unpayed = nb_unpayed + 1
                         score = score + 0.2
                     elif dos.DATEPAIEMENT > dos.DATEECHEANCE:
                         score = score + 0.1
-
+                        nb_late = nb_late + 1
+        #Calcul de la probabilité avec le theorème de bayes
+        proba_acteur = dossiers.count() / tout_dossiers.count()
+        proba_unpayed = nb_unpayed / proba_acteur
+        proba_late = nb_late / proba_acteur
+        score = score + proba_unpayed + proba_late
         if score > 5:
             score = 5
         result = {
@@ -263,7 +273,7 @@ class Registration(APIView):
 class StatistiqueSimulation(APIView):
     def get(self, request):
         result = []
-        last_month = datetime.today() - timedelta(days=30)
+        last_month = datetime.date.today() - timedelta(days=30)
         for i in range(6):
             simulation = DOSSIERPROSPECT.objects.filter(DPRDATEPROCPECT__month=last_month.month)
             obj = {
@@ -278,7 +288,7 @@ class StatistiqueSimulation(APIView):
 class StatistiqueDemandeCredit(APIView):
     def get(self, request):
         result = []
-        last_month = datetime.today() - timedelta(days=30)
+        last_month = datetime.date.today() - timedelta(days=30)
         for i in range(6):
             demandes = DEMANDECREDIT.objects.filter(DATE__month=last_month.month)
             obj = {
@@ -293,7 +303,7 @@ class StatistiqueDemandeCredit(APIView):
 class StatistiqueDemandeCreditAccepte(APIView):
     def get(self, request):
         result = []
-        last_month = datetime.today() - timedelta(days=30)
+        last_month = datetime.date.today() - timedelta(days=30)
         for i in range(6):
             demandes = DEMANDECREDIT.objects.filter(DATE__month=last_month.month, ETATACCEPTATION='Accepté')
             obj = {
@@ -303,3 +313,16 @@ class StatistiqueDemandeCreditAccepte(APIView):
             result.append(obj)
             last_month = last_month - timedelta(days=30)
         return Response(result, status= status.HTTP_200_OK)
+
+
+class LoginAPI(APIView):
+    def post(self, request):
+        username = request.data['username']
+        password = request.data['password']
+
+        user = User.objects.filter(username=username)
+        if user.count() == 1:
+            return Response("succed", status=status.HTTP_200_OK)
+        else:
+            return Response("failed", status=status.HTTP_400_BAD_REQUEST)
+

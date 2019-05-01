@@ -77,7 +77,6 @@ class PROSPECT(models.Model):
     PROSECTEURFONCTION = models.CharField(max_length=100, default="Public")
     PRODIRIGENT  = models.CharField(max_length=100,default="Dirigent")
     PRONBRENFANT = models.IntegerField(default=0)
-    # password = models.CharField(max_length=255, default="")
     # username = models.CharField(max_length=255, default="")
 
     # USERNAME_FIELD = 'PROMAIL'

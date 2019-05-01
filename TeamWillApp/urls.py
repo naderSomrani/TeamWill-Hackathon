@@ -35,5 +35,6 @@ urlpatterns = [
     path('registration', Registration.as_view()),
     path('statistique', StatistiqueSimulation.as_view()),
     path('statistique-demande', StatistiqueDemandeCredit.as_view()),
-    path('statistique-accepte', StatistiqueDemandeCreditAccepte.as_view())
+    path('statistique-accepte', StatistiqueDemandeCreditAccepte.as_view()),
+    path('login', LoginAPI.as_view())
 ]
